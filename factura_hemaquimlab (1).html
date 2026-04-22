@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Facturación — HEMAQUIMLAB</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2330;
+  --surface3: #222d3a;
+  --border: #2a3548;
+  --border2: #334055;
+  --accent: #3fb8af;
+  --accent2: #f7a325;
+  --accent3: #e05c7a;
+  --text: #e6edf3;
+  --muted: #7d8da6;
+  --muted2: #4d5a6e;
+  --success: #3fb873;
+  --danger: #e05c7a;
+  --radius: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Instrument Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 28px 16px 80px;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 10%, rgba(63,184,175,.12) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(247,163,37,.08) 0%, transparent 60%),
+    var(--bg);
+}
+
+/* ── Header ── */
+.app-header {
+  max-width: 860px; margin: 0 auto 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.logo-ring {
+  width: 52px; height: 52px; border-radius: 13px;
+  border: 2px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(63,184,175,.12); position: relative; flex-shrink: 0;
+}
+.logo-ring::after {
+  content: ''; position: absolute; inset: -4px;
+  border-radius: 16px; border: 1px solid rgba(63,184,175,.2);
+}
+.logo-ring svg { width: 26px; height: 26px; fill: var(--accent); }
+.app-title { font-family: 'Syne', sans-serif; font-size: 1.45rem; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
+.app-sub { font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
+
+/* ── BCV Strip ── */
+.bcv-strip {
+  max-width: 860px; margin: 0 auto 22px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.bcv-left { display: flex; align-items: center; gap: 14px; }
+.bcv-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.bcv-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.bcv-val { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--accent); margin-top: 1px; }
+.bcv-date { font-size: 0.73rem; color: var(--muted); }
+.btn-bcv {
+  padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border2);
+  background: var(--surface3); color: var(--text); font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.8rem; cursor: pointer; transition: all .2s;
+}
+.btn-bcv:hover { border-color: var(--accent); color: var(--accent); background: rgba(63,184,175,.08); }
+
+/* ── Card ── */
+.card {
+  max-width: 860px; margin: 0 auto 18px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: box-shadow .3s;
+}
+.card:focus-within { box-shadow: 0 0 0 2px rgba(63,184,175,.2); border-color: rgba(63,184,175,.4); }
+.card-header {
+  padding: 14px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2);
+}
+.card-header h2 { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--text); }
+.card-header .badge {
+  margin-left: auto; background: rgba(63,184,175,.12); color: var(--accent);
+  border: 1px solid rgba(63,184,175,.25); border-radius: 6px;
+  padding: 2px 10px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+}
+.card-body { padding: 22px; }
+
+/* ── Section title ── */
+.section-title {
+  font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .12em; color: var(--accent2);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── Lab identity box ── */
+.lab-identity {
+  background: linear-gradient(135deg, rgba(63,184,175,.08) 0%, rgba(247,163,37,.05) 100%);
+  border: 1px solid rgba(63,184,175,.2);
+  border-radius: 12px; padding: 18px 22px;
+  display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap;
+}
+.lab-monogram {
+  width: 56px; height: 56px; border-radius: 12px; flex-shrink: 0;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; color: #0d1117;
+}
+.lab-info-main { flex: 1; min-width: 200px; }
+.lab-name { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text); }
+.lab-lic { font-size: 0.82rem; color: var(--accent2); margin-top: 2px; font-style: italic; }
+.lab-details { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
+.lab-detail { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.lab-detail span { color: var(--text); }
+.locked-note {
+  font-size: 0.72rem; color: var(--muted2);
+  display: flex; align-items: center; gap: 5px; margin-top: 10px;
+}
+
+/* ── Grid forms ── */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+@media(max-width:580px){.grid2,.grid3{grid-template-columns:1fr;}}
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.field input, .field select, .field textarea {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 12px;
+  font-family: 'Instrument Sans', sans-serif; font-size: 0.88rem;
+  color: var(--text); outline: none; transition: border-color .2s, box-shadow .2s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(63,184,175,.1); }
+.field input[readonly] { background: rgba(63,184,175,.05); color: var(--accent); border-color: rgba(63,184,175,.2); font-weight: 600; cursor: default; }
+
+/* ── Services ── */
+.svc-header {
+  display: grid; grid-template-columns: 2.5fr 1fr 1.1fr 1fr auto;
+  gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border2);
+}
+.svc-header span { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.svc-row {
+  display: grid; grid-template-columns: 2.5fr 1fr 1.1fr 1fr auto;
+  gap: 10px; align-items: center; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  animation: rowIn .2s ease both;
+}
+@keyframes rowIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+.svc-row:last-of-type { border-bottom: none; }
+.svc-row input, .svc-row select {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px;
+  font-family: 'Instrument Sans', sans-serif; font-size: 0.87rem;
+  color: var(--text); outline: none; width: 100%; transition: border-color .2s;
+}
+.svc-row input:focus, .svc-row select:focus { border-color: var(--accent); }
+.svc-row input[readonly] { background: rgba(63,184,175,.05); color: var(--accent); border-color: rgba(63,184,175,.15); }
+.svc-total { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--accent); font-size: 0.9rem; text-align: right; }
+.btn-del { background: none; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 6px 9px; transition: all .18s; }
+.btn-del:hover { border-color: var(--danger); color: var(--danger); background: rgba(224,92,122,.08); }
+@media(max-width:620px){ .svc-header,.svc-row{ grid-template-columns:1fr 1fr auto; } .svc-row .desc-inp{grid-column:1/-1;} }
+
+/* Btn add row */
+.btn-add-row {
+  width: 100%; margin-top: 12px; padding: 10px;
+  background: rgba(63,184,175,.07); border: 1.5px dashed rgba(63,184,175,.3);
+  color: var(--accent); border-radius: 10px; font-family: 'Syne', sans-serif;
+  font-size: 0.83rem; font-weight: 700; cursor: pointer; transition: all .2s;
+}
+.btn-add-row:hover { background: rgba(63,184,175,.15); border-color: var(--accent); }
+
+/* Quick pick */
+.quick-pick-bar {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.qp-tag {
+  padding: 5px 12px; border-radius: 20px; cursor: pointer;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-size: 0.77rem; color: var(--muted); transition: all .18s;
+}
+.qp-tag:hover { background: rgba(63,184,175,.1); border-color: var(--accent); color: var(--accent); }
+
+/* ── Totals ── */
+.totals-box { margin-top: 20px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.tot-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 18px; border-bottom: 1px solid var(--border); font-size: 0.88rem;
+}
+.tot-row:last-child { border-bottom: none; }
+.tot-label { color: var(--muted); }
+.tot-grand {
+  background: linear-gradient(135deg, rgba(63,184,175,.15), rgba(247,163,37,.1));
+  border-top: 1px solid var(--border2) !important;
+  padding: 16px 18px !important;
+}
+.tot-grand .tot-label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: .06em; }
+.tot-grand-val { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--accent); }
+.tot-grand-usd { font-size: 0.78rem; color: var(--accent2); margin-top: 2px; }
+.iva-toggle { display: flex; align-items: center; gap: 8px; }
+.iva-toggle input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+.iva-toggle label { font-size: 0.78rem; color: var(--muted); cursor: pointer; }
+
+/* ── Pago ── */
+.pago-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media(max-width:500px){ .pago-grid{grid-template-columns:1fr 1fr;} }
+.pago-option { display: none; }
+.pago-label {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; border: 1.5px solid var(--border);
+  border-radius: 12px; cursor: pointer; font-size: 0.78rem;
+  font-weight: 600; color: var(--muted); text-align: center; transition: all .2s;
+}
+.pago-label .icon { font-size: 1.5rem; }
+.pago-option:checked + .pago-label {
+  border-color: var(--accent); background: rgba(63,184,175,.1);
+  color: var(--accent);
+}
+
+/* ── Buttons ── */
+.btn-row { max-width: 860px; margin: 0 auto; display: flex; gap: 12px; flex-wrap: wrap; }
+.btn {
+  padding: 12px 24px; border-radius: 10px; border: none;
+  font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 7px;
+  letter-spacing: .02em;
+}
+.btn-primary { background: var(--accent); color: #0d1117; }
+.btn-primary:hover { background: #52cfc6; transform: translateY(-1px); }
+.btn-accent2 { background: var(--accent2); color: #0d1117; }
+.btn-accent2:hover { background: #fdb740; transform: translateY(-1px); }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--accent2); color: var(--accent2); }
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px; backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 18px;
+  max-width: 700px; width: 100%; max-height: 92vh; overflow-y: auto;
+  transform: scale(.96) translateY(10px); transition: transform .25s;
+}
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+.modal-top {
+  padding: 18px 24px 14px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  position: sticky; top: 0; background: var(--surface); z-index: 2;
+}
+.modal-top h3 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; }
+.btn-close { background: none; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+.modal-footer {
+  padding: 14px 24px 18px; border-top: 1px solid var(--border);
+  display: flex; gap: 10px; position: sticky; bottom: 0; background: var(--surface);
+}
+
+/* ── Preview ── */
+#preview-wrap { padding: 28px 30px; }
+.pv-head {
+  background: linear-gradient(135deg, #1a3a4a 0%, #0d2233 100%);
+  border-radius: 12px; padding: 22px 24px; margin-bottom: 20px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;
+}
+.pv-lab-left {}
+.pv-monogram {
+  width: 48px; height: 48px; background: var(--accent); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 800; color: #0d1117;
+  margin-bottom: 10px;
+}
+.pv-lab-name { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800; color: #ffffff; }
+.pv-lab-lic { font-size: 0.78rem; color: rgba(255,255,255,.6); font-style: italic; margin-top: 2px; }
+.pv-lab-info { font-size: 0.75rem; color: rgba(255,255,255,.55); margin-top: 8px; line-height: 1.7; }
+.pv-fac-num-wrap { text-align: right; }
+.pv-fac-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.4); }
+.pv-fac-num { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; color: var(--accent2); line-height: 1; }
+.pv-fac-date { font-size: 0.77rem; color: rgba(255,255,255,.5); margin-top: 6px; }
+.pv-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.pv-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--accent2); margin-bottom: 8px; }
+.pv-client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+.pv-client-item { font-size: 0.83rem; }
+.pv-client-item .lbl { font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 1px; }
+.pv-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.pv-table th {
+  background: #1a3a4a; color: #e6edf3; padding: 9px 12px;
+  text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
+  font-family: 'Syne', sans-serif;
+}
+.pv-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+.pv-table tr:last-child td { border-bottom: none; }
+.pv-table .r { text-align: right; }
+.pv-totals { margin-top: 14px; }
+.pv-tot-row { display: flex; justify-content: space-between; padding: 7px 14px; font-size: 0.84rem; border-bottom: 1px dotted var(--border); }
+.pv-tot-row:last-child { background: rgba(63,184,175,.08); border: 1px solid rgba(63,184,175,.2); border-radius: 10px; margin-top: 6px; padding: 12px 16px; }
+.pv-tot-row .lbl { color: var(--muted); }
+.pv-pago { margin-top: 16px; padding: 12px 16px; background: var(--surface2); border-radius: 10px; border-left: 3px solid var(--accent); font-size: 0.84rem; }
+.pv-footer { margin-top: 20px; text-align: center; font-size: 0.73rem; color: var(--muted); border-top: 1px solid var(--border); padding-top: 16px; line-height: 1.6; }
+.pv-bcv-note { margin-top: 10px; font-size: 0.72rem; color: var(--muted2); background: var(--surface2); border-radius: 6px; padding: 6px 12px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 200;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text); padding: 12px 18px; border-radius: 10px;
+  font-size: 0.85rem; font-weight: 500;
+  transform: translateY(60px); opacity: 0; transition: all .3s;
+  pointer-events: none; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: var(--success); }
+</style>
+</head>
+<body>
+
+<!-- ── App Header ── -->
+<div class="app-header">
+  <div class="logo-ring">
+    <svg viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+  </div>
+  <div>
+    <div class="app-title">HEMAQUIMLAB</div>
+    <div class="app-sub">Sistema de Facturación — Laboratorio Clínico</div>
+  </div>
+</div>
+
+<!-- ── BCV Strip ── -->
+<div class="bcv-strip">
+  <div class="bcv-left">
+    <div class="bcv-dot"></div>
+    <div>
+      <div class="bcv-label">Tasa BCV oficial</div>
+      <div class="bcv-val">Bs. <span id="bcv-num">—</span> / $1 USD</div>
+    </div>
+    <div>
+      <div class="bcv-date" id="bcv-date-lbl">Sin configurar</div>
+      <div style="font-size:0.7rem;color:var(--muted2)">Conversión automática en todos los precios</div>
+    </div>
+  </div>
+  <button class="btn-bcv" onclick="promptBCV()">✎ Actualizar tasa</button>
+</div>
+
+<!-- ── 1. Identidad del laboratorio (sólo lectura) ── -->
+<div class="card">
+  <div class="card-header">
+    <svg width="15" height="15" fill="var(--accent)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+    <h2>Datos del Laboratorio</h2>
+    <span class="badge">🔒 Fijo</span>
+  </div>
+  <div class="card-body">
+    <div class="lab-identity">
+      <div class="lab-monogram">HQ</div>
+      <div class="lab-info-main">
+        <div class="lab-name">Laboratorio HEMAQUIMLAB</div>
+        <div class="lab-lic">Lic. Yadira del Carmen Fabre</div>
+        <div class="lab-details">
+          <div class="lab-detail">🪪 RIF: <span>V-08986766-1</span></div>
+          <div class="lab-detail">📞 <span>0212 860 88 55</span></div>
+          <div class="lab-detail">✉️ <span>hemaquimlab@gmail.com</span></div>
+          <div class="lab-detail" style="flex-basis:100%">📍 <span>Est. Salas a Balconcito, Edif. Centro 2000, Piso 2, Local Consultorio 2-A, Sector Altagracia, Zona Postal 1010, Caracas, Distrito Capital, Venezuela</span></div>
+        </div>
+        <div class="locked-note">🔒 Estos datos aparecerán en todas las facturas automáticamente</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 2. Datos de la factura ── -->
+<div class="card">
+  <div class="card-header">
+    <svg width="15" height="15" fill="var(--accent)" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+    <h2>Datos de la Factura</h2>
+  </div>
+  <div class="card-body">
+    <div class="grid3">
+      <div class="field">
+        <label>N° de Factura</label>
+        <input id="fac-num" type="text" readonly/>
+      </div>
+      <div class="field">
+        <label>Fecha de Emisión</label>
+        <input id="fac-fecha" type="date"/>
+      </div>
+      <div class="field">
+        <label>Lugar de Emisión</label>
+        <input id="fac-lugar" type="text" placeholder="Caracas"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. Datos del paciente ── -->
+<div class="card">
+  <div class="card-header">
+    <svg width="15" height="15" fill="var(--accent)" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+    <h2>Datos del Paciente / Cliente</h2>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="field">
+        <label>Nombre completo</label>
+        <input id="cli-nombre" type="text" placeholder="Juan Pérez González"/>
+      </div>
+      <div class="field">
+        <label>Cédula / RIF</label>
+        <input id="cli-rif" type="text" placeholder="V-12.345.678"/>
+      </div>
+      <div class="field">
+        <label>Dirección</label>
+        <input id="cli-dir" type="text" placeholder="Urb. Los Palos Grandes..."/>
+      </div>
+      <div class="field">
+        <label>Teléfono</label>
+        <input id="cli-tel" type="text" placeholder="0412-123-4567"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 4. Análisis ── -->
+<div class="card">
+  <div class="card-header">
+    <svg width="15" height="15" fill="var(--accent)" viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+    <h2>Análisis / Servicios</h2>
+  </div>
+  <div class="card-body">
+
+    <!-- Quick pick from catalogue -->
+    <div id="quick-pick-section" style="margin-bottom:16px;display:none">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">
+        ⚡ Agregar desde catálogo
+      </div>
+      <div class="quick-pick-bar" id="quick-pick-bar"></div>
+    </div>
+
+    <div class="svc-header">
+      <span>Descripción del análisis</span>
+      <span>Precio ($)</span>
+      <span>Precio (Bs)</span>
+      <span style="text-align:right">Total (Bs)</span>
+      <span></span>
+    </div>
+    <div id="svc-list"></div>
+    <button class="btn-add-row" onclick="addRow()">+ Agregar análisis</button>
+
+    <!-- Totals -->
+    <div class="totals-box">
+      <div class="tot-row">
+        <span class="tot-label">Subtotal</span>
+        <span id="t-subtotal">Bs. 0,00</span>
+      </div>
+      <div class="tot-row">
+        <div class="tot-label">IVA (16%)</div>
+        <div class="iva-toggle">
+          <input type="checkbox" id="iva-chk" onchange="recalc()"/>
+          <label for="iva-chk">Aplicar IVA</label>
+          <span id="t-iva" style="color:var(--text)">Bs. 0,00</span>
+        </div>
+      </div>
+      <div class="tot-row tot-grand">
+        <div>
+          <div class="tot-label">TOTAL A PAGAR</div>
+          <div class="tot-grand-val" id="t-total-bs">Bs. 0,00</div>
+          <div class="tot-grand-usd" id="t-total-usd">$ 0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 5. Forma de pago ── -->
+<div class="card">
+  <div class="card-header">
+    <svg width="15" height="15" fill="var(--accent)" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+    <h2>Forma de Pago</h2>
+  </div>
+  <div class="card-body">
+    <div class="pago-grid">
+      <div>
+        <input type="radio" name="pago" id="p1" value="Transferencia Bancaria" class="pago-option" checked>
+        <label for="p1" class="pago-label"><span class="icon">🏦</span>Transferencia Bancaria</label>
+      </div>
+      <div>
+        <input type="radio" name="pago" id="p2" value="Pago Móvil" class="pago-option">
+        <label for="p2" class="pago-label"><span class="icon">📱</span>Pago Móvil</label>
+      </div>
+      <div>
+        <input type="radio" name="pago" id="p3" value="Efectivo (Cash)" class="pago-option">
+        <label for="p3" class="pago-label"><span class="icon">💵</span>Efectivo (Cash)</label>
+      </div>
+      <div>
+        <input type="radio" name="pago" id="p4" value="Divisas (USD)" class="pago-option">
+        <label for="p4" class="pago-label"><span class="icon">💲</span>Divisas ($)</label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:16px">
+      <label>Referencia / Observaciones</label>
+      <input id="pago-obs" type="text" placeholder="Número de referencia, banco, etc."/>
+    </div>
+  </div>
+</div>
+
+<!-- ── Action buttons ── -->
+<div class="btn-row">
+  <button class="btn btn-primary" onclick="openPreview()">
+    <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+    Vista previa
+  </button>
+  <button class="btn btn-accent2" onclick="generatePDF()">
+    <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z"/></svg>
+    Descargar PDF
+  </button>
+  <button class="btn btn-ghost" onclick="resetForm()">
+    <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+    Nueva factura
+  </button>
+</div>
+
+<!-- ── Preview modal ── -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-top">
+      <h3>Vista previa</h3>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="preview-wrap"></div>
+    <div class="modal-footer">
+      <button class="btn btn-accent2" onclick="generatePDF()">⬇ Descargar PDF</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ════════════════ SCRIPT ════════════════ -->
+<script>
+// ── Lab constants ─────────────────────────────
+const LAB = {
+  nombre: 'Laboratorio HEMAQUIMLAB',
+  lic:    'Lic. Yadira del Carmen Fabre',
+  rif:    'V-08986766-1',
+  dir:    'Est. Salas a Balconcito, Edif. Centro 2000, Piso 2, Local Consultorio 2-A,\nSector Altagracia, Zona Postal 1010, Caracas, Distrito Capital, Venezuela',
+  dirShort: 'Est. Salas a Balconcito, Edif. Centro 2000, Piso 2, Local 2-A, Sector Altagracia, Caracas',
+  tel:    '0212 860 88 55',
+  email:  'hemaquimlab@gmail.com',
+};
+
+// ── State ─────────────────────────────────────
+let bcvRate = parseFloat(localStorage.getItem('bcvRate')) || 0;
+let counter = parseInt(localStorage.getItem('invCounter')) || 1;
+let rows = [];
+let rowId = 0;
+
+// ── Init ──────────────────────────────────────
+window.onload = () => {
+  displayBCV();
+  setNumber();
+  setToday();
+  document.getElementById('fac-lugar').value = 'Caracas';
+  addRow();
+  loadQuickPick();
+};
+
+function setToday() {
+  document.getElementById('fac-fecha').value = new Date().toISOString().slice(0,10);
+}
+function setNumber() {
+  document.getElementById('fac-num').value = 'FAC-' + String(counter).padStart(6,'0');
+}
+
+// ── BCV ───────────────────────────────────────
+function displayBCV() {
+  if (bcvRate > 0) {
+    document.getElementById('bcv-num').textContent = fmtBs(bcvRate);
+    document.getElementById('bcv-date-lbl').textContent = 'Actualizado: ' + (localStorage.getItem('bcvDate') || 'manual');
+  }
+}
+function promptBCV() {
+  const v = prompt('Tasa BCV (Bs por $1 USD):', bcvRate || '');
+  if (v && !isNaN(parseFloat(v))) {
+    bcvRate = parseFloat(v);
+    localStorage.setItem('bcvRate', bcvRate);
+    localStorage.setItem('bcvDate', new Date().toLocaleDateString('es-VE'));
+    displayBCV(); renderRows(); recalc();
+    toast('✓ Tasa BCV actualizada', 'success');
+  }
+}
+
+// ── Quick pick from catalogue ─────────────────
+function loadQuickPick() {
+  const cat = JSON.parse(localStorage.getItem('labCatalog') || '[]');
+  const bar = document.getElementById('quick-pick-bar');
+  const sec = document.getElementById('quick-pick-section');
+  if (cat.length === 0) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  bar.innerHTML = cat.slice(0,12).map(s =>
+    `<span class="qp-tag" onclick="addFromCatalog('${s.id}')" title="${esc(s.desc||'')}">${esc(s.code)} — ${esc(s.name)}</span>`
+  ).join('');
+}
+function addFromCatalog(id) {
+  const cat = JSON.parse(localStorage.getItem('labCatalog') || '[]');
+  const s = cat.find(x => x.id === id);
+  if (!s) return;
+  const row = { id: rowId++, desc: s.name, usd: s.usd };
+  rows.push(row);
+  renderRows(); recalc();
+}
+
+// ── Rows ──────────────────────────────────────
+function addRow() {
+  rows.push({ id: rowId++, desc: '', usd: 0 });
+  renderRows();
+}
+function removeRow(id) {
+  rows = rows.filter(r => r.id !== id);
+  renderRows(); recalc();
+}
+function renderRows() {
+  const list = document.getElementById('svc-list');
+  list.innerHTML = '';
+  rows.forEach((r, i) => {
+    const bs = r.usd && bcvRate ? fmtBs(r.usd * bcvRate) : '—';
+    const div = document.createElement('div');
+    div.className = 'svc-row';
+    div.style.animationDelay = (i*0.03)+'s';
+    div.innerHTML = `
+      <input class="desc-inp" type="text" placeholder="Ej: Hemograma Completo" value="${esc(r.desc)}"
+        oninput="upd(${r.id},'desc',this.value)"/>
+      <input type="number" min="0" step="0.01" placeholder="0.00" value="${r.usd||''}"
+        oninput="upd(${r.id},'usd',this.value)"/>
+      <input type="text" readonly value="${r.usd && bcvRate ? 'Bs. '+fmtBs(r.usd*bcvRate) : '—'}"/>
+      <div class="svc-total">${r.usd && bcvRate ? 'Bs. '+fmtBs(r.usd*bcvRate) : '—'}</div>
+      <button class="btn-del" onclick="removeRow(${r.id})">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+function upd(id, field, val) {
+  const r = rows.find(x => x.id === id);
+  if (!r) return;
+  r[field] = field === 'usd' ? parseFloat(val)||0 : val;
+  recalc(); renderRows();
+}
+
+// ── Recalc ────────────────────────────────────
+function recalc() {
+  const rate = bcvRate || 0;
+  const subtotalUsd = rows.reduce((a,r) => a + (r.usd||0), 0);
+  const subtotalBs  = subtotalUsd * rate;
+  const applyIva    = document.getElementById('iva-chk').checked;
+  const iva         = applyIva ? subtotalBs * 0.16 : 0;
+  const totalBs     = subtotalBs + iva;
+  const totalUsd    = subtotalUsd + (applyIva ? subtotalUsd*0.16 : 0);
+  document.getElementById('t-subtotal').textContent = 'Bs. ' + fmtBs(subtotalBs);
+  document.getElementById('t-iva').textContent      = 'Bs. ' + fmtBs(iva);
+  document.getElementById('t-total-bs').textContent = 'Bs. ' + fmtBs(totalBs);
+  document.getElementById('t-total-usd').textContent= '$ ' + totalUsd.toFixed(2);
+}
+
+// ── Form data ────────────────────────────────
+function getData() {
+  const applyIva = document.getElementById('iva-chk').checked;
+  const rate = bcvRate || 0;
+  const subtotalUsd = rows.reduce((a,r) => a+(r.usd||0), 0);
+  const subtotalBs  = subtotalUsd * rate;
+  const iva         = applyIva ? subtotalBs*0.16 : 0;
+  const totalBs     = subtotalBs + iva;
+  const totalUsd    = subtotalUsd + (applyIva ? subtotalUsd*0.16 : 0);
+  return {
+    fac: {
+      num:   document.getElementById('fac-num').value,
+      fecha: document.getElementById('fac-fecha').value,
+      lugar: document.getElementById('fac-lugar').value,
+    },
+    cli: {
+      nombre: document.getElementById('cli-nombre').value,
+      rif:    document.getElementById('cli-rif').value,
+      dir:    document.getElementById('cli-dir').value,
+      tel:    document.getElementById('cli-tel').value,
+    },
+    pago: document.querySelector('input[name="pago"]:checked')?.value || '',
+    obs:  document.getElementById('pago-obs').value,
+    rows, rate, subtotalBs, iva, totalBs, totalUsd, applyIva,
+  };
+}
+
+// ── Preview ───────────────────────────────────
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function openPreview() {
+  const d = getData();
+  document.getElementById('preview-wrap').innerHTML = buildPreview(d);
+  openModal();
+}
+
+function fmtFecha(iso) {
+  if (!iso) return '—';
+  return new Date(iso+'T12:00:00').toLocaleDateString('es-VE',{day:'2-digit',month:'long',year:'numeric'});
+}
+
+function buildPreview(d) {
+  const trs = d.rows.map(r => `
+    <tr>
+      <td>${esc(r.desc||'(sin descripción)')}</td>
+      <td class="r">$ ${(r.usd||0).toFixed(2)}</td>
+      <td class="r">Bs. ${fmtBs((r.usd||0)*(d.rate||0))}</td>
+    </tr>`).join('');
+  return `
+  <div id="preview-wrap">
+    <div class="pv-head">
+      <div class="pv-lab-left">
+        <div class="pv-monogram">HQ</div>
+        <div class="pv-lab-name">${LAB.nombre}</div>
+        <div class="pv-lab-lic">${LAB.lic}</div>
+        <div class="pv-lab-info">
+          RIF: ${LAB.rif}<br>
+          ${LAB.dirShort}<br>
+          Tel: ${LAB.tel} · ${LAB.email}
+        </div>
+      </div>
+      <div class="pv-fac-num-wrap">
+        <div class="pv-fac-label">Factura</div>
+        <div class="pv-fac-num">${esc(d.fac.num)}</div>
+        <div class="pv-fac-date">${fmtFecha(d.fac.fecha)}</div>
+        ${d.fac.lugar ? `<div class="pv-fac-date">Lugar: ${esc(d.fac.lugar)}</div>` : ''}
+      </div>
+    </div>
+
+    <div class="pv-section-label">Datos del Paciente</div>
+    <div class="pv-client-grid">
+      <div class="pv-client-item"><span class="lbl">Nombre</span>${esc(d.cli.nombre||'—')}</div>
+      <div class="pv-client-item"><span class="lbl">Cédula / RIF</span>${esc(d.cli.rif||'—')}</div>
+      <div class="pv-client-item"><span class="lbl">Dirección</span>${esc(d.cli.dir||'—')}</div>
+      <div class="pv-client-item"><span class="lbl">Teléfono</span>${esc(d.cli.tel||'—')}</div>
+    </div>
+    <div class="pv-divider"></div>
+
+    <div class="pv-section-label">Análisis realizados</div>
+    <table class="pv-table">
+      <thead><tr><th>Descripción</th><th style="text-align:right">USD</th><th style="text-align:right">Bs</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+
+    <div class="pv-totals">
+      <div class="pv-tot-row"><span class="lbl">Subtotal</span><span>Bs. ${fmtBs(d.subtotalBs)}</span></div>
+      ${d.applyIva ? `<div class="pv-tot-row"><span class="lbl">IVA (16%)</span><span>Bs. ${fmtBs(d.iva)}</span></div>` : ''}
+      <div class="pv-tot-row">
+        <span class="lbl">TOTAL</span>
+        <div style="text-align:right">
+          <strong style="font-family:'Syne',sans-serif;font-size:1.05rem;color:var(--accent)">Bs. ${fmtBs(d.totalBs)}</strong><br>
+          <span style="font-size:0.77rem;color:var(--accent2)">$ ${d.totalUsd.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pv-pago">
+      <strong>Forma de pago:</strong> ${esc(d.pago)}
+      ${d.obs ? `<br><span style="color:var(--muted);font-size:0.8rem">${esc(d.obs)}</span>` : ''}
+    </div>
+    <div class="pv-bcv-note">Tasa BCV referencial: Bs. ${fmtBs(d.rate)} por $1 USD</div>
+    <div class="pv-footer">
+      <strong>${LAB.nombre}</strong><br>
+      ${LAB.lic} · RIF ${LAB.rif}<br>
+      ${LAB.dirShort}<br>
+      Tel: ${LAB.tel} · ${LAB.email}<br>
+      <em>Gracias por confiar en nuestros servicios</em>
+    </div>
+  </div>`;
+}
+
+// ── PDF ───────────────────────────────────────
+async function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const d = getData();
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W = 210, m = 16;
+  let y = 0;
+
+  // Colors
+  const navy  = [13, 28, 46];
+  const teal  = [63, 184, 175];
+  const gold  = [247, 163, 37];
+  const white = [255, 255, 255];
+  const light = [240, 246, 246];
+  const muted = [125, 141, 166];
+
+  // ── Header block ──
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, W, 44, 'F');
+
+  // Teal accent bar left
+  doc.setFillColor(...teal);
+  doc.rect(0, 0, 5, 44, 'F');
+
+  // Monogram box
+  doc.setFillColor(...teal);
+  doc.roundedRect(12, 8, 22, 22, 3, 3, 'F');
+  doc.setTextColor(...navy);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text('HQ', 23, 22, { align:'center' });
+
+  // Lab name
+  doc.setTextColor(...white);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(15);
+  doc.text('Laboratorio HEMAQUIMLAB', 40, 16);
+  doc.setFont('helvetica','italic');
+  doc.setFontSize(8.5);
+  doc.setTextColor(200, 220, 220);
+  doc.text(LAB.lic, 40, 22);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(160, 185, 185);
+  doc.text(`RIF: ${LAB.rif}  ·  Tel: ${LAB.tel}  ·  ${LAB.email}`, 40, 28);
+  doc.text(LAB.dirShort, 40, 34);
+
+  // Invoice number (right)
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.setTextColor(...gold);
+  doc.text('FACTURA', W - m, 12, { align:'right' });
+  doc.setFontSize(20);
+  doc.text(d.fac.num, W - m, 22, { align:'right' });
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(160, 185, 185);
+  doc.text(fmtFecha(d.fac.fecha), W - m, 29, { align:'right' });
+  if (d.fac.lugar) doc.text(`Lugar: ${d.fac.lugar}`, W - m, 34, { align:'right' });
+
+  y = 50;
+
+  // ── Patient box ──
+  doc.setFillColor(...light);
+  doc.roundedRect(m, y, W - m*2, 26, 3, 3, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.setTextColor(...teal);
+  doc.text('DATOS DEL PACIENTE', m+4, y+6);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...navy);
+  doc.text(`Nombre: ${d.cli.nombre||'—'}`, m+4, y+13);
+  doc.text(`Cédula/RIF: ${d.cli.rif||'—'}`, m+4, y+19);
+  const rx = W/2 + 2;
+  doc.text(`Dirección: ${d.cli.dir||'—'}`, rx, y+13);
+  doc.text(`Teléfono: ${d.cli.tel||'—'}`, rx, y+19);
+  y += 32;
+
+  // ── Services table ──
+  const tableData = d.rows.map(r => [
+    r.desc || '(sin descripción)',
+    `$ ${(r.usd||0).toFixed(2)}`,
+    `Bs. ${fmtBs((r.usd||0)*(d.rate||0))}`,
+  ]);
+
+  doc.autoTable({
+    startY: y,
+    head: [['Análisis / Servicio', 'Precio USD', 'Precio Bs']],
+    body: tableData,
+    margin: { left: m, right: m },
+    headStyles: {
+      fillColor: navy, textColor: white,
+      fontStyle: 'bold', fontSize: 8.5,
+      halign: 'left',
+    },
+    bodyStyles: { fontSize: 9, textColor: [20,20,35] },
+    alternateRowStyles: { fillColor: [245, 249, 249] },
+    columnStyles: { 1: { halign:'right' }, 2: { halign:'right' } },
+    theme: 'grid',
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // ── Totals ──
+  const tW = 72, tX = W - m - tW;
+  doc.setFillColor(...light);
+  const tH = d.applyIva ? 30 : 22;
+  doc.roundedRect(tX, y, tW, tH, 3, 3, 'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.setTextColor(...muted);
+  doc.text('Subtotal:', tX+4, y+8);
+  doc.setTextColor(...navy);
+  doc.text(`Bs. ${fmtBs(d.subtotalBs)}`, tX+tW-4, y+8, { align:'right' });
+  if (d.applyIva) {
+    doc.setTextColor(...muted); doc.text('IVA (16%):', tX+4, y+16);
+    doc.setTextColor(...navy); doc.text(`Bs. ${fmtBs(d.iva)}`, tX+tW-4, y+16, { align:'right' });
+  }
+
+  // Grand total
+  const gY = y + tH + 3;
+  doc.setFillColor(...navy);
+  doc.roundedRect(tX, gY, tW, 20, 3, 3, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...teal);
+  doc.text('TOTAL A PAGAR', tX+4, gY+6);
+  doc.setFontSize(13); doc.setTextColor(...white);
+  doc.text(`Bs. ${fmtBs(d.totalBs)}`, tX+tW-4, gY+13, { align:'right' });
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gold);
+  doc.text(`$ ${d.totalUsd.toFixed(2)}`, tX+tW-4, gY+18, { align:'right' });
+
+  y = gY + 28;
+
+  // ── Payment ──
+  doc.setFillColor(235, 248, 246);
+  doc.roundedRect(m, y, W-m*2, 18, 3, 3, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...navy);
+  doc.text(`Forma de pago: ${d.pago}`, m+4, y+7);
+  if (d.obs) {
+    doc.setFont('helvetica','normal'); doc.setTextColor(...muted);
+    doc.text(d.obs, m+4, y+13);
+  }
+  y += 24;
+
+  // BCV note
+  doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(...muted);
+  doc.text(`Tasa BCV referencial: Bs. ${fmtBs(d.rate)} / $1 USD`, m, y);
+  y += 5;
+
+  // ── Footer ──
+  const footY = 282;
+  doc.setFillColor(...navy);
+  doc.rect(0, footY, W, 2, 'F');
+  doc.setFillColor(20, 40, 60);
+  doc.rect(0, footY+2, W, 12, 'F');
+  doc.setFillColor(...teal);
+  doc.rect(0, footY+2, 5, 12, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...teal);
+  doc.text('HEMAQUIMLAB', W/2, footY+8, { align:'center' });
+  doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(160,185,185);
+  doc.text(`${LAB.tel}  ·  ${LAB.email}  ·  RIF: ${LAB.rif}`, W/2, footY+13, { align:'center' });
+
+  const fname = `${d.fac.num}_${(d.cli.nombre||'paciente').replace(/\s+/g,'_')}.pdf`;
+  doc.save(fname);
+  toast('✓ PDF descargado: '+fname, 'success');
+  closeModal();
+  counter++;
+  localStorage.setItem('invCounter', counter);
+  setNumber();
+}
+
+// ── Reset ────────────────────────────────────
+function resetForm() {
+  if (!confirm('¿Crear nueva factura?')) return;
+  document.getElementById('cli-nombre').value = '';
+  document.getElementById('cli-rif').value    = '';
+  document.getElementById('cli-dir').value    = '';
+  document.getElementById('cli-tel').value    = '';
+  document.getElementById('pago-obs').value   = '';
+  document.getElementById('iva-chk').checked  = false;
+  rows = []; rowId = 0;
+  addRow(); setToday(); recalc();
+  toast('✓ Nueva factura lista');
+}
+
+// ── Utils ─────────────────────────────────────
+function fmtBs(n) { return n.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s)   { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type}`;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
