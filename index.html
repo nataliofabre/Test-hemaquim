@@ -8,6 +8,135 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
+/* ═══════════════════════════════════════════
+   USERS / AUTH UI
+═══════════════════════════════════════════ */
+.user-chip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:var(--s2);
+  border:1px solid var(--b1);
+  border-radius:10px;
+  padding:6px 10px;
+  margin-right:10px;
+}
+.user-avatar{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:rgba(63,184,175,.16);
+  color:var(--ac);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:.8rem;
+  font-weight:800;
+  font-family:'Syne',sans-serif;
+}
+.user-meta{
+  display:flex;
+  flex-direction:column;
+  line-height:1.1;
+}
+.user-name{
+  font-size:.75rem;
+  font-weight:700;
+  color:var(--tx);
+}
+.user-role{
+  font-size:.65rem;
+  color:var(--mu);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.user-actions{
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+.user-mini-btn{
+  background:none;
+  border:1px solid var(--b1);
+  color:var(--mu);
+  border-radius:8px;
+  padding:6px 10px;
+  font-size:.74rem;
+  cursor:pointer;
+  transition:all .16s;
+}
+.user-mini-btn:hover{
+  border-color:var(--ac);
+  color:var(--ac);
+}
+.role-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+@media(max-width:700px){
+  .role-grid{grid-template-columns:1fr;}
+}
+.role-card{
+  border:1px solid var(--b1);
+  background:var(--s2);
+  border-radius:12px;
+  padding:12px;
+  cursor:pointer;
+  transition:all .16s;
+}
+.role-card:hover{
+  border-color:var(--ac);
+  background:rgba(63,184,175,.06);
+}
+.role-card.active{
+  border-color:var(--ac);
+  background:rgba(63,184,175,.12);
+}
+.role-title{
+  font-family:'Syne',sans-serif;
+  font-size:.88rem;
+  font-weight:700;
+  color:var(--tx);
+}
+.role-desc{
+  font-size:.75rem;
+  color:var(--mu);
+  margin-top:4px;
+  line-height:1.45;
+}
+.perm-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+.perm-pill{
+  font-size:.67rem;
+  padding:4px 8px;
+  border-radius:20px;
+  border:1px solid rgba(63,184,175,.2);
+  background:rgba(63,184,175,.08);
+  color:var(--ac);
+}
+.locked{
+  opacity:.45;
+  pointer-events:none;
+  filter:grayscale(.2);
+}
+.guard-note{
+  margin-top:12px;
+  padding:10px 12px;
+  border-left:3px solid var(--a2);
+  background:rgba(247,163,37,.08);
+  border-radius:8px;
+  color:var(--mu);
+  font-size:.78rem;
+  line-height:1.5;
+}
+.users-table td .perm-pill{
+  margin:2px 4px 2px 0;
+}
 :root{--bg:#0d1117;--s1:#161b22;--s2:#1c2330;--s3:#222d3a;--b1:#2a3548;--b2:#334055;--ac:#3fb8af;--a2:#f7a325;--a3:#e05c7a;--tx:#e6edf3;--mu:#7d8da6;--m2:#4d5a6e;--ok:#3fb873;--rd:#e05c7a;--r:14px;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
@@ -252,7 +381,16 @@ td{padding:11px 12px;font-size:.84rem;vertical-align:middle;}
   <button class="nav-tab" onclick="goTo('cat')" id="tab-cat">🔬 Catálogo</button>
   <button class="nav-tab" onclick="goTo('lib')" id="tab-lib">📒 Libro Contable</button>
   <div class="ns"></div>
-  <div class="bcv-chip" onclick="promptBCV()">
+  <div class="user-chip" id="user-chip">
+  <div class="user-avatar" id="user-avatar">A</div>
+  <div class="user-meta">
+    <div class="user-name" id="user-name">Admin</div>
+    <div class="user-role" id="user-role">ADMIN</div>
+  </div>
+  <div class="user-actions">
+    <button class="user-mini-btn" onclick="openM('mo-user-switch')">Changer</button>
+  </div>
+</div>>
     <div class="bcv-dot"></div>
     <div>
       <div class="bcv-val">Bs. <span id="bcv-disp">—</span> / $1</div>
@@ -516,11 +654,372 @@ td{padding:11px 12px;font-size:.84rem;vertical-align:middle;}
     <div style="padding:20px"><p style="color:var(--mu);font-size:.9rem;line-height:1.6">¿Seguro que deseas eliminar <strong id="del-name" style="color:var(--tx)"></strong>?</p></div>
     <div class="mft"><button class="btn btn-g" onclick="closeM('mo-del')">Cancelar</button><button class="btn btn-d" onclick="confirmDel()">Sí, eliminar</button></div>
   </div>
+  <!-- USER SWITCH MODAL -->
+<div class="mo" id="mo-user-switch">
+  <div class="mbox" style="max-width:760px">
+    <div class="mhd">
+      <h3>👤 Utilisateur actif</h3>
+      <button class="mbtn-x" onclick="closeM('mo-user-switch')">✕</button>
+    </div>
+
+    <div style="padding:20px">
+      <div class="st">Choisir un profil</div>
+
+      <div class="role-grid" id="role-grid"></div>
+
+      <div class="guard-note">
+        Ce module fonctionne en local avec <strong>localStorage</strong>.  
+        Il sert à simuler des rôles et permissions dans l’application sans backend.
+      </div>
+
+      <div class="st" style="margin-top:18px">Permissions du profil actif</div>
+      <div id="active-permissions"></div>
+    </div>
+
+    <div class="mft">
+      <button class="btn btn-g" onclick="closeM('mo-user-switch')">Fermer</button>
+    </div>
+  </div>
+</div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
+  <script>
+
+// ═══════════════════════════════════════════
+
+//  USERS / ROLES / PERMISSIONS
+
+// ═══════════════════════════════════════════
+
+const ROLE_DEFS = {
+
+  admin: {
+
+    label: 'Administrador',
+
+    desc: 'Acceso completo a todo el sistema.',
+
+    permissions: [
+
+      'billing.create',
+
+      'billing.read',
+
+      'billing.export',
+
+      'catalog.read',
+
+      'catalog.create',
+
+      'catalog.edit',
+
+      'catalog.delete',
+
+      'accounting.read',
+
+      'accounting.export',
+
+      'expense.create',
+
+      'expense.delete',
+
+      'bcv.edit',
+
+      'users.manage'
+
+    ]
+
+  },
+
+  contador: {
+
+    label: 'Contador',
+
+    desc: 'Consulta el libro contable, exporta reportes y revisa ingresos/egresos.',
+
+    permissions: [
+
+      'billing.read',
+
+      'billing.export',
+
+      'catalog.read',
+
+      'accounting.read',
+
+      'accounting.export'
+
+    ]
+
+  },
+
+  recepcion: {
+
+    label: 'Recepción',
+
+    desc: 'Crea facturas y consulta el catálogo, sin tocar configuración crítica.',
+
+    permissions: [
+
+      'billing.create',
+
+      'billing.read',
+
+      'catalog.read'
+
+    ]
+
+  },
+
+  tecnico: {
+
+    label: 'Técnico',
+
+    desc: 'Solo consulta servicios y catálogo del laboratorio.',
+
+    permissions: [
+
+      'catalog.read'
+
+    ]
+
+  },
+
+  auditor: {
+
+    label: 'Auditor',
+
+    desc: 'Solo lectura de facturación, catálogo y libro contable.',
+
+    permissions: [
+
+      'billing.read',
+
+      'catalog.read',
+
+      'accounting.read'
+
+    ]
+
+  }
+
+};
+
+const USER_PRESETS = [
+
+  {id:'u-admin', name:'Yadira Fabre', role:'admin'},
+
+  {id:'u-conta', name:'Contador', role:'contador'},
+
+  {id:'u-recep', name:'Recepción', role:'recepcion'},
+
+  {id:'u-tec', name:'Técnico', role:'tecnico'},
+
+  {id:'u-audit', name:'Auditor', role:'auditor'}
+
+];
+
+Object.defineProperty(DB, 'users', {
+
+  get(){ return JSON.parse(localStorage.getItem('labUsers') || '[]'); },
+
+  set(v){ localStorage.setItem('labUsers', JSON.stringify(v)); }
+
+});
+
+Object.defineProperty(DB, 'currentUser', {
+
+  get(){ return JSON.parse(localStorage.getItem('labCurrentUser') || 'null'); },
+
+  set(v){ localStorage.setItem('labCurrentUser', JSON.stringify(v)); }
+
+});
+
+function seedUsers(){
+
+  if(!DB.users.length){
+
+    DB.users = USER_PRESETS;
+
+  }
+
+  if(!DB.currentUser){
+
+    DB.currentUser = DB.users[0];
+
+  }
+
+}
+
+function getCurrentUser(){
+
+  return DB.currentUser || USER_PRESETS[0];
+
+}
+
+function getRoleDef(role){
+
+  return ROLE_DEFS[role] || ROLE_DEFS.recepcion;
+
+}
+
+function can(permission){
+
+  const user = getCurrentUser();
+
+  const role = getRoleDef(user.role);
+
+  return role.permissions.includes(permission);
+
+}
+
+function requirePerm(permission, msg='No tienes permisos para esta acción'){
+
+  if(can(permission)) return true;
+
+  showToast('⛔ ' + msg, 'err');
+
+  return false;
+
+}
+
+function switchUser(userId){
+
+  const user = DB.users.find(u => u.id === userId);
+
+  if(!user) return;
+
+  DB.currentUser = user;
+
+  refreshUserUI();
+
+  applyPermissionsToUI();
+
+  renderRoleModal();
+
+  closeM('mo-user-switch');
+
+  showToast('✓ Perfil activo: ' + user.name, 'ok');
+
+}
+
+function refreshUserUI(){
+
+  const user = getCurrentUser();
+
+  const role = getRoleDef(user.role);
+
+  document.getElementById('user-name').textContent = user.name;
+
+  document.getElementById('user-role').textContent = role.label.toUpperCase();
+
+  document.getElementById('user-avatar').textContent = (user.name || 'U').charAt(0).toUpperCase();
+
+}
+
+function renderRoleModal(){
+
+  const user = getCurrentUser();
+
+  const grid = document.getElementById('role-grid');
+
+  const perms = document.getElementById('active-permissions');
+
+  grid.innerHTML = DB.users.map(u=>{
+
+    const role = getRoleDef(u.role);
+
+    const active = u.id === user.id ? 'active' : '';
+
+    return `
+
+      <div class="role-card ${active}" onclick="switchUser('${u.id}')">
+
+        <div class="role-title">${esc(u.name)} · ${esc(role.label)}</div>
+
+        <div class="role-desc">${esc(role.desc)}</div>
+
+        <div class="perm-list">
+
+          ${role.permissions.map(p=>`<span class="perm-pill">${esc(p)}</span>`).join('')}
+
+        </div>
+
+      </div>
+
+    `;
+
+  }).join('');
+
+  const activeRole = getRoleDef(user.role);
+
+  perms.innerHTML = `
+
+    <div class="perm-list">
+
+      ${activeRole.permissions.map(p=>`<span class="perm-pill">${esc(p)}</span>`).join('')}
+
+    </div>
+
+  `;
+
+}
+
+function applyPermissionsToUI(){
+
+  const catTab = document.getElementById('tab-cat');
+
+  const libTabBtn = document.getElementById('tab-lib');
+
+  if(catTab){
+
+    catTab.style.display = can('catalog.read') ? 'inline-flex' : 'none';
+
+  }
+
+  if(libTabBtn){
+
+    libTabBtn.style.display = can('accounting.read') ? 'inline-flex' : 'none';
+
+  }
+
+  // bouton BCV
+
+  const bcvChip = document.querySelector('.bcv-chip');
+
+  if(bcvChip){
+
+    bcvChip.style.opacity = can('bcv.edit') ? '1' : '.45';
+
+    bcvChip.style.pointerEvents = can('bcv.edit') ? 'auto' : 'none';
+
+  }
+
+  // formulaire catalogue
+
+  const catForm = document.getElementById('cat-form');
+
+  if(catForm){
+
+    catForm.classList.toggle('locked', !can('catalog.create') && !can('catalog.edit'));
+
+  }
+
+  // bloc egresos
+
+  const egSection = document.querySelector('#lt-eg .card');
+
+  if(egSection){
+
+    egSection.classList.toggle('locked', !can('expense.create'));
+
+  }
+
+}
+
 // ═══════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════
@@ -564,12 +1063,21 @@ function goTo(p){
 //  BCV
 // ═══════════════════════════════════════════
 function promptBCV(){
+
+  if(!requirePerm('bcv.edit','Solo el administrador puede modificar la tasa BCV')) return;
+
   const v=prompt('Tasa BCV (Bs por $1 USD):\nEjemplo: 86.50', DB.rate||'');
+
   if(v&&!isNaN(parseFloat(v))){
+
     DB.rate=parseFloat(v); DB.rateDate=new Date().toLocaleDateString('es-VE');
+
     refreshBCV(); recalc(); catBsPrev(); egBsPrev();
+
     showToast('✓ Tasa BCV actualizada — todos los módulos recalculados','ok');
+
   }
+
 }
 function refreshBCV(){
   document.getElementById('bcv-disp').textContent = DB.rate>0 ? fmtBs(DB.rate) : '—';
@@ -672,7 +1180,10 @@ function pvTotals(d){
   <div class="pv-tr"><span class="l">TOTAL</span><div style="text-align:right"><strong style="font-family:'Syne',sans-serif;font-size:.98rem;color:var(--ac)">Bs. ${fmtBs(d.totB)}</strong><br><span style="color:var(--a2);font-size:.75rem">$ ${d.totU.toFixed(2)}</span></div></div>`;
 }
 
-async function genPDF(){
+  async function genPDF(){
+
+  if(!requirePerm('billing.create','No puedes generar facturas')) return;
+
   const {jsPDF}=window.jspdf, d=getFacData(), doc=new jsPDF({unit:'mm',format:'a4'});
   const W=210,m=16,navy=[13,28,46],teal=[63,184,175],gold=[247,163,37],white=[255,255,255],light=[240,246,246],mu=[125,141,166];
   // Header
@@ -778,7 +1289,57 @@ function catBsPrev(){
   document.getElementById('cf-bs').value=DB.rate>0?'Bs. '+fmtBs(u*DB.rate):'— (configure tasa BCV)';
 }
 
-function saveCat(){
+function saveCat(){function saveCat(){
+
+  if(catEditId){
+
+    if(!requirePerm('catalog.edit','No puedes editar servicios del catálogo')) return;
+
+  }else{
+
+    if(!requirePerm('catalog.create','No puedes crear servicios en el catálogo')) return;
+
+  }
+
+  const code=document.getElementById('cf-code').value.trim();
+
+  const name=document.getElementById('cf-name').value.trim();
+
+  const cat=document.getElementById('cf-cat').value.trim();
+
+  const usd=parseFloat(document.getElementById('cf-usd').value)||0;
+
+  const desc=document.getElementById('cf-desc').value.trim();
+
+  if(!code){showToast('⚠ El código es obligatorio','err');return;}
+
+  if(!name){showToast('⚠ El nombre es obligatorio','err');return;}
+
+  if(usd<=0){showToast('⚠ El precio debe ser mayor a 0','err');return;}
+
+  const catalog=[...DB.catalog];
+
+  if(catalog.find(s=>s.code===code&&s.id!==catEditId)){showToast(`⚠ Código "${code}" ya existe`,'err');return;}
+
+  if(catEditId){
+
+    const i=catalog.findIndex(s=>s.id===catEditId);
+
+    catalog[i]={id:catEditId,code,name,cat,usd,desc};
+
+    showToast(`✓ "${name}" actualizado`,'ok');
+
+  } else {
+
+    catalog.push({id:uid(),code,name,cat,usd,desc});
+
+    showToast(`✓ "${name}" agregado`,'ok');
+
+  }
+
+  DB.catalog=catalog; clearCatForm(); renderCat(); refreshQP();
+
+}
   const code=document.getElementById('cf-code').value.trim();
   const name=document.getElementById('cf-name').value.trim();
   const cat=document.getElementById('cf-cat').value.trim();
@@ -826,16 +1387,31 @@ function clearCatForm(){
 }
 
 function askDelCat(id){
+
+  if(!requirePerm('catalog.delete','No puedes eliminar servicios del catálogo')) return;
+
   catDelId=id;
+
   const s=DB.catalog.find(x=>x.id===id);
+
   document.getElementById('del-name').textContent=s?`${s.code} — ${s.name}`:'';
+
   openM('mo-del');
+
 }
+
 function confirmDel(){
+
+  if(!requirePerm('catalog.delete','No puedes eliminar servicios del catálogo')) return;
+
   if(!catDelId)return;
+
   const cat=DB.catalog.filter(x=>x.id!==catDelId);
+
   DB.catalog=cat; catDelId=null; closeM('mo-del'); renderCat(); refreshQP();
+
   showToast('🗑 Servicio eliminado');
+
 }
 
 function renderCat(){
@@ -988,22 +1564,52 @@ function egBsPrev(){
 }
 
 function saveEgreso(){
+
+  if(!requirePerm('expense.create','No puedes registrar egresos')) return;
+
   document.getElementById('eg-fecha').value=document.getElementById('eg-fecha').value||new Date().toISOString().slice(0,10);
+
   const fecha=document.getElementById('eg-fecha').value;
+
   const cat=document.getElementById('eg-cat').value;
+
   const pago=document.getElementById('eg-pago').value;
+
   const desc=document.getElementById('eg-desc').value.trim();
+
   const usd=parseFloat(document.getElementById('eg-usd').value)||0;
+
   const ref=document.getElementById('eg-ref').value.trim();
+
   if(!desc){showToast('⚠ La descripción es obligatoria','err');return;}
+
   if(usd<=0){showToast('⚠ El monto debe ser mayor a 0','err');return;}
+
   const montoB=usd*(DB.rate||0);
+
   const entry={
+
     id:uid(), type:'egreso',
+
     fecha, categoria:cat, desc, pago, ref,
+
     montoU:usd, montoB, rate:DB.rate, rateDate:DB.rateDate,
+
     creadoEn:new Date().toISOString(), frozen:true
+
   };
+
+  DB.libro=[...DB.libro,entry];
+
+  ['eg-desc','eg-usd','eg-ref','eg-bs-prev'].forEach(id=>document.getElementById(id).value='');
+
+  document.getElementById('eg-fecha').value=new Date().toISOString().slice(0,10);
+
+  renderEg(); renderKPIs(); buildMonthSel();
+
+  showToast(`✓ Egreso "${desc}" registrado`,'ok');
+
+};
   DB.libro=[...DB.libro,entry];
   ['eg-desc','eg-usd','eg-ref','eg-bs-prev'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('eg-fecha').value=new Date().toISOString().slice(0,10);
@@ -1027,11 +1633,19 @@ function renderEg(){
 }
 
 function delEgreso(id){
+
+  if(!requirePerm('expense.delete','No puedes eliminar egresos')) return;
+
   if(!confirm('¿Eliminar este egreso?'))return;
+
   DB.libro=DB.libro.filter(e=>e.id!==id);
+
   renderEg(); renderKPIs(); buildMonthSel();
+
   if(libInnerTab==='all')renderLib();
+
   showToast('🗑 Egreso eliminado');
+
 }
 
 // ── MONTHS ────────────────────────────────
@@ -1268,7 +1882,17 @@ function showToast(msg,type=''){const t=document.getElementById('toast');t.textC
 //  INIT
 // ═══════════════════════════════════════════
 window.onload=()=>{
+
+  seedUsers();
+
+  refreshUserUI();
+
+  renderRoleModal();
+
+  applyPermissionsToUI();
+
   refreshBCV();
+
   initFac();
   // seed demo catalog if empty
   if(!DB.catalog.length){
