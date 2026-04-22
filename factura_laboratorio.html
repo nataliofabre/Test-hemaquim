@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Facturación — Laboratorio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #f4f1ec;
+    --surface: #ffffff;
+    --surface2: #f9f7f3;
+    --border: #e2ddd5;
+    --accent: #1a3a4a;
+    --accent2: #c8873a;
+    --text: #1c1c1c;
+    --muted: #7a7265;
+    --danger: #c0392b;
+    --success: #2d6a4f;
+    --radius: 12px;
+    --shadow: 0 2px 20px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  /* ── Header ── */
+  .app-header {
+    max-width: 820px;
+    margin: 0 auto 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .app-logo {
+    width: 46px; height: 46px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .app-logo svg { width: 26px; height: 26px; fill: white; }
+  .app-title { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--accent); }
+  .app-sub { font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
+
+  /* ── Tasa BCV banner ── */
+  .bcv-banner {
+    max-width: 820px; margin: 0 auto 24px;
+    background: var(--accent);
+    color: white;
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .bcv-label { font-size: 0.78rem; opacity: 0.7; text-transform: uppercase; letter-spacing: .06em; }
+  .bcv-rate { font-family: 'DM Serif Display', serif; font-size: 1.4rem; }
+  .bcv-meta { font-size: 0.75rem; opacity: 0.6; }
+  .bcv-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white; border-radius: 8px;
+    padding: 6px 14px; font-size: 0.8rem; cursor: pointer;
+    transition: background .2s;
+  }
+  .bcv-btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* ── Card ── */
+  .card {
+    max-width: 820px; margin: 0 auto 20px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2);
+  }
+  .card-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.05rem; color: var(--accent); }
+  .card-body { padding: 24px; }
+
+  /* ── Grid form ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media(max-width:580px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 0.76rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .field input, .field select, .field textarea {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color .2s, box-shadow .2s;
+    outline: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(26,58,74,.1);
+  }
+  .field input[readonly] { background: var(--surface2); color: var(--muted); }
+
+  /* ── Servicios ── */
+  .service-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .service-row:last-of-type { border-bottom: none; }
+  .service-row input, .service-row select {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem; outline: none; width: 100%;
+    transition: border-color .2s;
+  }
+  .service-row input:focus, .service-row select:focus { border-color: var(--accent); }
+  .service-row .total-cell {
+    font-weight: 600; font-size: 0.88rem; color: var(--accent); text-align: right;
+  }
+  .btn-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--danger); font-size: 1.2rem; padding: 4px; line-height: 1;
+    opacity: 0.6; transition: opacity .2s;
+  }
+  .btn-del:hover { opacity: 1; }
+  .service-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  .service-header span {
+    font-size: 0.72rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  @media(max-width:620px){
+    .service-row,.service-header{grid-template-columns:1fr 1fr auto;}
+    .service-row .desc-cell{grid-column:1/-1;}
+  }
+
+  /* ── Totals ── */
+  .totals-box {
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .totals-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .totals-row:last-child { border-bottom: none; }
+  .totals-row.grand {
+    background: var(--accent);
+    color: white;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    padding: 14px 18px;
+  }
+  .totals-row .label { color: var(--muted); }
+  .totals-row.grand .label { color: rgba(255,255,255,.7); font-family: 'DM Sans', sans-serif; font-size: 0.8rem; }
+
+  /* ── Pago ── */
+  .pago-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin-top: 4px;
+  }
+  @media(max-width:580px){.pago-grid{grid-template-columns:1fr 1fr;}}
+  .pago-option { display: none; }
+  .pago-label {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 8px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.8rem; font-weight: 500; color: var(--muted);
+    text-align: center;
+    transition: all .2s;
+  }
+  .pago-label .icon { font-size: 1.4rem; }
+  .pago-option:checked + .pago-label {
+    border-color: var(--accent);
+    background: rgba(26,58,74,.06);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+  .btn {
+    padding: 12px 24px; border-radius: 10px; border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 7px;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #12293a; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-accent { background: var(--accent2); color: white; }
+  .btn-accent:hover { background: #b07330; transform: translateY(-1px); }
+  .btn-add {
+    margin-top: 14px; background: none; border: 2px dashed var(--border);
+    color: var(--muted); border-radius: 10px; padding: 10px; width: 100%;
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Factura preview modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+    backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: white; border-radius: 16px;
+    max-width: 680px; width: 100%; max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(20px); transition: transform .25s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-top {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-top h3 { font-family: 'DM Serif Display', serif; font-size: 1.2rem; color: var(--accent); }
+  .btn-close {
+    background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted);
+    line-height: 1;
+  }
+
+  /* ── Preview factura ── */
+  #preview-content {
+    padding: 30px 36px;
+    font-size: 0.88rem;
+    line-height: 1.7;
+  }
+  .pv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+  .pv-lab-name { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--accent); }
+  .pv-lab-info { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .pv-num { text-align: right; }
+  .pv-num .num { font-family: 'DM Serif Display', serif; font-size: 1.6rem; color: var(--accent2); }
+  .pv-num .date { font-size: 0.78rem; color: var(--muted); }
+  .pv-divider { border: none; border-top: 2px solid var(--accent); margin: 18px 0; }
+  .pv-section { margin-bottom: 18px; }
+  .pv-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent2); margin-bottom: 6px; }
+  .pv-client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+  .pv-client-item { font-size: 0.83rem; }
+  .pv-client-item span { color: var(--muted); font-size: 0.75rem; display: block; }
+  .pv-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .pv-table th { background: var(--accent); color: white; padding: 8px 10px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .05em; }
+  .pv-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .pv-table tr:last-child td { border-bottom: none; }
+  .pv-table .num-col { text-align: right; }
+  .pv-totals { margin-top: 16px; }
+  .pv-tot-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.85rem; border-bottom: 1px dotted var(--border); }
+  .pv-tot-row:last-child { border-bottom: none; font-weight: 700; font-size: 1rem; background: var(--surface2); padding: 10px 12px; border-radius: 8px; margin-top: 6px; }
+  .pv-pago { margin-top: 20px; padding: 12px 16px; background: var(--surface2); border-radius: 10px; border-left: 4px solid var(--accent); }
+  .pv-footer { margin-top: 24px; text-align: center; font-size: 0.75rem; color: var(--muted); border-top: 1px solid var(--border); padding-top: 16px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    background: var(--accent); color: white; padding: 12px 20px;
+    border-radius: 10px; font-size: 0.88rem; font-weight: 500;
+    transform: translateY(80px); opacity: 0; transition: all .3s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="app-header">
+  <div class="app-logo">
+    <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H5a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2v-4a2 2 0 00-2-2zm12-12h-4a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2V5a2 2 0 00-2-2zm-2 12h-2v2h-2v2h2v2h2v-2h2v-2h-2v-2z"/></svg>
+  </div>
+  <div>
+    <div class="app-title">LabFactura</div>
+    <div class="app-sub">Sistema de facturación para laboratorio</div>
+  </div>
+</div>
+
+<!-- BCV Banner -->
+<div class="bcv-banner">
+  <div>
+    <div class="bcv-label">Tasa BCV oficial</div>
+    <div class="bcv-rate" id="bcv-display">Bs. <span id="bcv-val">—</span> / $</div>
+    <div class="bcv-meta" id="bcv-date">Cargando tasa...</div>
+  </div>
+  <button class="bcv-btn" onclick="promptBCV()">✎ Actualizar manualmente</button>
+</div>
+
+<!-- 1. Datos del laboratorio -->
+<div class="card">
+  <div class="card-header">
+    <svg width="16" height="16" fill="var(--accent2)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+    <h2>Datos del Laboratorio</h2>
+  </div>
+  <div class="card-body">
+    <div class="grid2" style="gap:16px">
+      <div class="field">
+        <label>Nombre del laboratorio</label>
+        <input id="lab-nombre" type="text" placeholder="Ej: Laboratorio Clínico Santa Ana" />
+      </div>
+      <div class="field">
+        <label>RIF</label>
+        <input id="lab-rif" type="text" placeholder="J-12345678-9" />
+      </div>
+      <div class="field">
+        <label>Dirección</label>
+        <input id="lab-dir" type="text" placeholder="Av. Principal, Edificio..." />
+      </div>
+      <div class="field">
+        <label>Ciudad / Estado</label>
+        <input id="lab-ciudad" type="text" placeholder="Caracas, Distrito Capital" />
+      </div>
+      <div class="field">
+        <label>Teléfono</label>
+        <input id="lab-tel" type="text" placeholder="0212-123-4567" />
+      </div>
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input id="lab-email" type="text" placeholder="info@laboratorio.com" />
+      </div>
+    </div>
+    <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="saveLabData()" style="padding:8px 16px; font-size:0.82rem;">💾 Guardar datos del laboratorio</button>
+      <span id="lab-saved-msg" style="font-size:0.8rem; color:var(--success); display:none;">✓ Datos guardados</span>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Datos de la factura -->
+<div class="card">
+  <div class="card-header">
+    <svg width="16" height="16" fill="var(--accent2)" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+    <h2>Datos de la Factura</h2>
+  </div>
+  <div class="card-body">
+    <div class="grid3">
+      <div class="field">
+        <label>Número de factura</label>
+        <input id="fac-num" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>Fecha de emisión</label>
+        <input id="fac-fecha" type="date" />
+      </div>
+      <div class="field">
+        <label>Lugar de emisión</label>
+        <input id="fac-lugar" type="text" placeholder="Caracas" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Datos del paciente/cliente -->
+<div class="card">
+  <div class="card-header">
+    <svg width="16" height="16" fill="var(--accent2)" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+    <h2>Datos del Paciente / Cliente</h2>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="field">
+        <label>Nombre completo</label>
+        <input id="cli-nombre" type="text" placeholder="Juan Pérez González" />
+      </div>
+      <div class="field">
+        <label>RIF / Cédula</label>
+        <input id="cli-rif" type="text" placeholder="V-12.345.678" />
+      </div>
+      <div class="field">
+        <label>Dirección</label>
+        <input id="cli-dir" type="text" placeholder="Urb. Los Palos Grandes..." />
+      </div>
+      <div class="field">
+        <label>Teléfono</label>
+        <input id="cli-tel" type="text" placeholder="0412-123-4567" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Análisis / Servicios -->
+<div class="card">
+  <div class="card-header">
+    <svg width="16" height="16" fill="var(--accent2)" viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+    <h2>Análisis / Servicios</h2>
+  </div>
+  <div class="card-body">
+    <div class="service-header">
+      <span>Descripción del análisis</span>
+      <span>Precio ($)</span>
+      <span>Precio (Bs)</span>
+      <span style="text-align:right">Total (Bs)</span>
+      <span></span>
+    </div>
+    <div id="services-list"></div>
+    <button class="btn-add" onclick="addService()">+ Agregar análisis</button>
+    <div class="totals-box" style="margin-top:20px">
+      <div class="totals-row">
+        <span class="label">Subtotal</span>
+        <span id="subtotal-bs">Bs. 0,00</span>
+      </div>
+      <div class="totals-row">
+        <span class="label">IVA (16%)</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:0.8rem;color:var(--muted)">
+            <input type="checkbox" id="iva-check" onchange="recalculate()" style="margin-right:4px">Aplicar IVA
+          </label>
+          <span id="iva-bs">Bs. 0,00</span>
+        </div>
+      </div>
+      <div class="totals-row grand">
+        <span class="label">TOTAL A PAGAR</span>
+        <div style="text-align:right">
+          <div id="total-bs" style="font-size:1.2rem">Bs. 0,00</div>
+          <div id="total-usd" style="font-size:0.82rem; opacity:0.75; font-family:'DM Sans',sans-serif">$ 0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Forma de pago -->
+<div class="card">
+  <div class="card-header">
+    <svg width="16" height="16" fill="var(--accent2)" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+    <h2>Forma de Pago</h2>
+  </div>
+  <div class="card-body">
+    <div class="pago-grid">
+      <div>
+        <input type="radio" name="pago" id="p-transfer" value="Transferencia Bancaria" class="pago-option" checked>
+        <label for="p-transfer" class="pago-label"><span class="icon">🏦</span>Transferencia Bancaria</label>
+      </div>
+      <div>
+        <input type="radio" name="pago" id="p-pago-movil" value="Pago Móvil" class="pago-option">
+        <label for="p-pago-movil" class="pago-label"><span class="icon">📱</span>Pago Móvil</label>
+      </div>
+      <div>
+        <input type="radio" name="pago" id="p-cash" value="Efectivo (Cash)" class="pago-option">
+        <label for="p-cash" class="pago-label"><span class="icon">💵</span>Efectivo (Cash)</label>
+      </div>
+      <div>
+        <input type="radio" name="pago" id="p-divisa" value="Divisas ($)" class="pago-option">
+        <label for="p-divisa" class="pago-label"><span class="icon">💲</span>Divisas ($)</label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:16px">
+      <label>Observaciones / Referencia de pago</label>
+      <input id="pago-obs" type="text" placeholder="Número de referencia, banco destino, etc." />
+    </div>
+  </div>
+</div>
+
+<!-- Botones finales -->
+<div style="max-width:820px;margin:0 auto;">
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="openPreview()">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      Vista previa
+    </button>
+    <button class="btn btn-accent" onclick="generatePDF()">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z"/></svg>
+      Descargar PDF
+    </button>
+    <button class="btn btn-secondary" onclick="resetForm()">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+      Nueva factura
+    </button>
+  </div>
+</div>
+
+<!-- Modal preview -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-top">
+      <h3>Vista previa de factura</h3>
+      <button class="btn-close" onclick="closePreview()">✕</button>
+    </div>
+    <div id="preview-content"></div>
+    <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; gap:10px;">
+      <button class="btn btn-accent" onclick="generatePDF()">⬇ Descargar PDF</button>
+      <button class="btn btn-secondary" onclick="closePreview()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let bcvRate = parseFloat(localStorage.getItem('bcvRate')) || 0;
+let services = [];
+let invoiceCounter = parseInt(localStorage.getItem('invoiceCounter')) || 1;
+
+// ── Init ───────────────────────────────────────────────
+window.onload = () => {
+  loadLabData();
+  setInvoiceNumber();
+  setTodayDate();
+  addService(); // one blank row
+  displayBCV();
+  tryFetchBCV();
+};
+
+function setTodayDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fac-fecha').value = today;
+}
+
+function setInvoiceNumber() {
+  const n = String(invoiceCounter).padStart(6, '0');
+  document.getElementById('fac-num').value = `FAC-${n}`;
+}
+
+// ── BCV ────────────────────────────────────────────────
+function displayBCV() {
+  if (bcvRate > 0) {
+    document.getElementById('bcv-val').textContent = bcvRate.toLocaleString('es-VE', {minimumFractionDigits:2});
+    document.getElementById('bcv-date').textContent = `Actualizado: ${localStorage.getItem('bcvDate') || 'manualmente'}`;
+  } else {
+    document.getElementById('bcv-date').textContent = 'Ingrese la tasa manualmente';
+  }
+}
+
+async function tryFetchBCV() {
+  // BCV doesn't have a public CORS-friendly API; we use a proxy if available
+  // For now, show manual prompt if no rate stored
+  if (bcvRate <= 0) {
+    promptBCV();
+  }
+}
+
+function promptBCV() {
+  const val = prompt('Ingrese la tasa BCV actual (Bs por 1 $):\nEjemplo: 86.50', bcvRate || '');
+  if (val && !isNaN(parseFloat(val))) {
+    bcvRate = parseFloat(val);
+    localStorage.setItem('bcvRate', bcvRate);
+    const now = new Date().toLocaleDateString('es-VE');
+    localStorage.setItem('bcvDate', now);
+    displayBCV();
+    recalculate();
+    showToast('✓ Tasa BCV actualizada');
+  }
+}
+
+// ── Lab data persistence ───────────────────────────────
+function saveLabData() {
+  const data = {
+    nombre: document.getElementById('lab-nombre').value,
+    rif: document.getElementById('lab-rif').value,
+    dir: document.getElementById('lab-dir').value,
+    ciudad: document.getElementById('lab-ciudad').value,
+    tel: document.getElementById('lab-tel').value,
+    email: document.getElementById('lab-email').value,
+  };
+  localStorage.setItem('labData', JSON.stringify(data));
+  const msg = document.getElementById('lab-saved-msg');
+  msg.style.display = 'inline';
+  setTimeout(() => msg.style.display = 'none', 3000);
+  showToast('✓ Datos del laboratorio guardados');
+}
+
+function loadLabData() {
+  const d = JSON.parse(localStorage.getItem('labData') || '{}');
+  if (d.nombre) document.getElementById('lab-nombre').value = d.nombre;
+  if (d.rif) document.getElementById('lab-rif').value = d.rif;
+  if (d.dir) document.getElementById('lab-dir').value = d.dir;
+  if (d.ciudad) document.getElementById('lab-ciudad').value = d.ciudad;
+  if (d.tel) document.getElementById('lab-tel').value = d.tel;
+  if (d.email) document.getElementById('lab-email').value = d.email;
+}
+
+// ── Services ───────────────────────────────────────────
+let serviceId = 0;
+
+function addService() {
+  const id = serviceId++;
+  services.push({ id, desc: '', precio_usd: 0, qty: 1 });
+  renderServices();
+}
+
+function removeService(id) {
+  services = services.filter(s => s.id !== id);
+  renderServices();
+  recalculate();
+}
+
+function renderServices() {
+  const list = document.getElementById('services-list');
+  list.innerHTML = '';
+  services.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'service-row';
+    row.innerHTML = `
+      <input class="desc-cell" type="text" placeholder="Ej: Hemograma completo" value="${s.desc}"
+        oninput="updateService(${s.id},'desc',this.value)" />
+      <input type="number" min="0" step="0.01" placeholder="0.00" value="${s.precio_usd || ''}"
+        oninput="updateService(${s.id},'precio_usd',this.value)" />
+      <input type="text" readonly value="${s.precio_usd && bcvRate ? fmtBs(s.precio_usd * bcvRate) : '—'}" style="color:var(--muted);background:var(--surface2)" />
+      <div class="total-cell">${s.precio_usd && bcvRate ? fmtBs(s.precio_usd * bcvRate) : '—'}</div>
+      <button class="btn-del" onclick="removeService(${s.id})" title="Eliminar">✕</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function updateService(id, field, value) {
+  const s = services.find(x => x.id === id);
+  if (!s) return;
+  s[field] = field === 'precio_usd' ? parseFloat(value) || 0 : value;
+  recalculate();
+  renderServices();
+}
+
+// ── Calculations ───────────────────────────────────────
+function recalculate() {
+  const rate = bcvRate || 0;
+  let subtotalUsd = services.reduce((a, s) => a + (s.precio_usd || 0), 0);
+  let subtotalBs = subtotalUsd * rate;
+  const applyIva = document.getElementById('iva-check').checked;
+  const iva = applyIva ? subtotalBs * 0.16 : 0;
+  const totalBs = subtotalBs + iva;
+  const totalUsd = subtotalUsd + (applyIva ? subtotalUsd * 0.16 : 0);
+
+  document.getElementById('subtotal-bs').textContent = 'Bs. ' + fmtBs(subtotalBs);
+  document.getElementById('iva-bs').textContent = 'Bs. ' + fmtBs(iva);
+  document.getElementById('total-bs').textContent = 'Bs. ' + fmtBs(totalBs);
+  document.getElementById('total-usd').textContent = '$ ' + totalUsd.toFixed(2);
+  renderServices();
+}
+
+function fmtBs(n) {
+  return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ── Preview ────────────────────────────────────────────
+function getFormData() {
+  const pago = document.querySelector('input[name="pago"]:checked')?.value || '';
+  const applyIva = document.getElementById('iva-check').checked;
+  const rate = bcvRate || 0;
+  let subtotalUsd = services.reduce((a, s) => a + (s.precio_usd || 0), 0);
+  let subtotalBs = subtotalUsd * rate;
+  const iva = applyIva ? subtotalBs * 0.16 : 0;
+  const totalBs = subtotalBs + iva;
+  const totalUsd = subtotalUsd + (applyIva ? subtotalUsd * 0.16 : 0);
+
+  return {
+    lab: {
+      nombre: document.getElementById('lab-nombre').value || 'Laboratorio Clínico',
+      rif: document.getElementById('lab-rif').value,
+      dir: document.getElementById('lab-dir').value,
+      ciudad: document.getElementById('lab-ciudad').value,
+      tel: document.getElementById('lab-tel').value,
+      email: document.getElementById('lab-email').value,
+    },
+    fac: {
+      num: document.getElementById('fac-num').value,
+      fecha: document.getElementById('fac-fecha').value,
+      lugar: document.getElementById('fac-lugar').value,
+    },
+    cli: {
+      nombre: document.getElementById('cli-nombre').value,
+      rif: document.getElementById('cli-rif').value,
+      dir: document.getElementById('cli-dir').value,
+      tel: document.getElementById('cli-tel').value,
+    },
+    pago, obs: document.getElementById('pago-obs').value,
+    services, rate, subtotalBs, iva, totalBs, totalUsd, applyIva
+  };
+}
+
+function openPreview() {
+  const d = getFormData();
+  document.getElementById('preview-content').innerHTML = buildPreviewHTML(d);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closePreview() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function buildPreviewHTML(d) {
+  const fecha = d.fac.fecha ? new Date(d.fac.fecha + 'T12:00:00').toLocaleDateString('es-VE', {day:'2-digit', month:'long', year:'numeric'}) : '';
+  const rows = d.services.map(s => `
+    <tr>
+      <td>${s.desc || '(sin descripción)'}</td>
+      <td class="num-col">$ ${(s.precio_usd || 0).toFixed(2)}</td>
+      <td class="num-col">Bs. ${fmtBs((s.precio_usd || 0) * (d.rate || 0))}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div class="pv-header">
+      <div>
+        <div class="pv-lab-name">${d.lab.nombre}</div>
+        <div class="pv-lab-info">
+          ${d.lab.rif ? `RIF: ${d.lab.rif}<br>` : ''}
+          ${d.lab.dir ? `${d.lab.dir}<br>` : ''}
+          ${d.lab.ciudad ? `${d.lab.ciudad}<br>` : ''}
+          ${d.lab.tel ? `Tel: ${d.lab.tel}` : ''}
+          ${d.lab.email ? ` · ${d.lab.email}` : ''}
+        </div>
+      </div>
+      <div class="pv-num">
+        <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Factura</div>
+        <div class="num">${d.fac.num}</div>
+        <div class="date">${fecha}</div>
+        ${d.fac.lugar ? `<div class="date">Lugar: ${d.fac.lugar}</div>` : ''}
+      </div>
+    </div>
+    <hr class="pv-divider"/>
+    <div class="pv-section">
+      <div class="pv-section-title">Datos del Paciente</div>
+      <div class="pv-client-grid">
+        <div class="pv-client-item"><span>Nombre</span>${d.cli.nombre || '—'}</div>
+        <div class="pv-client-item"><span>RIF / Cédula</span>${d.cli.rif || '—'}</div>
+        <div class="pv-client-item"><span>Dirección</span>${d.cli.dir || '—'}</div>
+        <div class="pv-client-item"><span>Teléfono</span>${d.cli.tel || '—'}</div>
+      </div>
+    </div>
+    <div class="pv-section">
+      <div class="pv-section-title">Análisis realizados</div>
+      <table class="pv-table">
+        <thead><tr><th>Descripción</th><th style="text-align:right">Precio ($)</th><th style="text-align:right">Precio (Bs)</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="pv-totals">
+      <div class="pv-tot-row"><span>Subtotal</span><span>Bs. ${fmtBs(d.subtotalBs)}</span></div>
+      ${d.applyIva ? `<div class="pv-tot-row"><span>IVA (16%)</span><span>Bs. ${fmtBs(d.iva)}</span></div>` : ''}
+      <div class="pv-tot-row"><span>TOTAL</span><div style="text-align:right"><strong>Bs. ${fmtBs(d.totalBs)}</strong><br><span style="font-size:0.78rem;color:var(--muted)">$ ${d.totalUsd.toFixed(2)}</span></div></div>
+    </div>
+    <div class="pv-pago">
+      <strong>Forma de pago:</strong> ${d.pago}
+      ${d.obs ? `<br><span style="color:var(--muted);font-size:0.82rem">${d.obs}</span>` : ''}
+    </div>
+    <div style="margin-top:14px;padding:10px 12px;background:#f0f4f0;border-radius:8px;font-size:0.78rem;color:var(--muted)">
+      Tasa BCV referencial: Bs. ${fmtBs(d.rate)} / $1 USD
+    </div>
+    <div class="pv-footer">
+      Este documento es una factura oficial emitida por ${d.lab.nombre}<br>
+      Gracias por confiar en nuestros servicios
+    </div>
+  `;
+}
+
+// ── PDF Generation ─────────────────────────────────────
+async function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const d = getFormData();
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, margin = 18;
+  let y = 20;
+
+  // Colors
+  const navy = [26, 58, 74];
+  const gold = [200, 135, 58];
+  const light = [244, 241, 236];
+  const muted = [122, 114, 101];
+
+  // Header background
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, W, 38, 'F');
+
+  // Lab name
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text(d.lab.nombre || 'Laboratorio Clínico', margin, 14);
+
+  // Lab info (white, small)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  let labInfo = [];
+  if (d.lab.rif) labInfo.push(`RIF: ${d.lab.rif}`);
+  if (d.lab.dir) labInfo.push(d.lab.dir);
+  if (d.lab.ciudad) labInfo.push(d.lab.ciudad);
+  if (d.lab.tel) labInfo.push(`Tel: ${d.lab.tel}`);
+  doc.text(labInfo.join('  ·  '), margin, 21);
+
+  // Invoice number (right side)
+  doc.setTextColor(...gold);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text(d.fac.num, W - margin, 14, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  const fecha = d.fac.fecha ? new Date(d.fac.fecha + 'T12:00:00').toLocaleDateString('es-VE', {day:'2-digit', month:'long', year:'numeric'}) : '';
+  doc.text(fecha, W - margin, 22, { align: 'right' });
+  if (d.fac.lugar) doc.text(`Lugar: ${d.fac.lugar}`, W - margin, 27, { align: 'right' });
+
+  y = 46;
+
+  // Client box
+  doc.setFillColor(...light);
+  doc.roundedRect(margin, y, W - margin * 2, 28, 3, 3, 'F');
+  doc.setTextColor(...gold);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text('DATOS DEL PACIENTE', margin + 4, y + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...navy);
+  doc.setFontSize(9);
+  doc.text(`Nombre: ${d.cli.nombre || '—'}`, margin + 4, y + 13);
+  doc.text(`RIF / Cédula: ${d.cli.rif || '—'}`, margin + 4, y + 19);
+  const rightX = W / 2 + 4;
+  doc.text(`Dirección: ${d.cli.dir || '—'}`, rightX, y + 13);
+  doc.text(`Teléfono: ${d.cli.tel || '—'}`, rightX, y + 19);
+  y += 34;
+
+  // Services table
+  const tableRows = d.services.map(s => [
+    s.desc || '(sin descripción)',
+    `$ ${(s.precio_usd || 0).toFixed(2)}`,
+    `Bs. ${fmtBs((s.precio_usd || 0) * (d.rate || 0))}`,
+  ]);
+
+  doc.autoTable({
+    startY: y,
+    head: [['Análisis / Servicio', 'Precio (USD)', 'Precio (Bs)']],
+    body: tableRows,
+    margin: { left: margin, right: margin },
+    headStyles: { fillColor: navy, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+    bodyStyles: { fontSize: 9, textColor: [28, 28, 28] },
+    alternateRowStyles: { fillColor: [249, 247, 243] },
+    columnStyles: {
+      1: { halign: 'right' },
+      2: { halign: 'right' },
+    },
+    theme: 'grid',
+  });
+
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Totals
+  const totalsX = W - margin - 70;
+  const totalsW = 70;
+  doc.setFillColor(...light);
+  const totH = d.applyIva ? 32 : 24;
+  doc.roundedRect(totalsX, y, totalsW, totH, 3, 3, 'F');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...muted);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Subtotal:', totalsX + 4, y + 8);
+  doc.setTextColor(...navy);
+  doc.text(`Bs. ${fmtBs(d.subtotalBs)}`, totalsX + totalsW - 4, y + 8, { align: 'right' });
+  if (d.applyIva) {
+    doc.setTextColor(...muted);
+    doc.text('IVA (16%):', totalsX + 4, y + 16);
+    doc.setTextColor(...navy);
+    doc.text(`Bs. ${fmtBs(d.iva)}`, totalsX + totalsW - 4, y + 16, { align: 'right' });
+  }
+
+  // Total grand
+  const grandY = y + totH + 4;
+  doc.setFillColor(...navy);
+  doc.roundedRect(totalsX, grandY, totalsW, 18, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('TOTAL A PAGAR', totalsX + 4, grandY + 6);
+  doc.setFontSize(12);
+  doc.text(`Bs. ${fmtBs(d.totalBs)}`, totalsX + totalsW - 4, grandY + 12, { align: 'right' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...gold);
+  doc.text(`$ ${d.totalUsd.toFixed(2)}`, totalsX + totalsW - 4, grandY + 17, { align: 'right' });
+
+  y = grandY + 26;
+
+  // Payment
+  doc.setFillColor(240, 247, 240);
+  doc.roundedRect(margin, y, W - margin * 2, 18, 3, 3, 'F');
+  doc.setTextColor(...navy);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(`Forma de pago: ${d.pago}`, margin + 4, y + 7);
+  if (d.obs) {
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...muted);
+    doc.text(d.obs, margin + 4, y + 13);
+  }
+  y += 26;
+
+  // BCV note
+  doc.setFontSize(7.5);
+  doc.setTextColor(...muted);
+  doc.setFont('helvetica', 'italic');
+  doc.text(`Tasa BCV referencial: Bs. ${fmtBs(d.rate)} / $1 USD`, margin, y);
+  y += 6;
+
+  // Footer
+  doc.setFillColor(...navy);
+  doc.rect(0, 285, W, 12, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(`${d.lab.nombre}  ·  Gracias por confiar en nuestros servicios`, W / 2, 292, { align: 'center' });
+
+  doc.save(`${d.fac.num}_${(d.cli.nombre || 'paciente').replace(/\s+/g,'_')}.pdf`);
+  showToast('✓ PDF descargado');
+  closePreview();
+  incrementInvoice();
+}
+
+function incrementInvoice() {
+  invoiceCounter++;
+  localStorage.setItem('invoiceCounter', invoiceCounter);
+  setInvoiceNumber();
+}
+
+// ── Reset ──────────────────────────────────────────────
+function resetForm() {
+  if (!confirm('¿Crear nueva factura? Se borrarán los datos del formulario actual.')) return;
+  document.getElementById('cli-nombre').value = '';
+  document.getElementById('cli-rif').value = '';
+  document.getElementById('cli-dir').value = '';
+  document.getElementById('cli-tel').value = '';
+  document.getElementById('pago-obs').value = '';
+  document.getElementById('fac-lugar').value = '';
+  document.getElementById('iva-check').checked = false;
+  services = [];
+  serviceId = 0;
+  addService();
+  setTodayDate();
+  recalculate();
+  showToast('✓ Formulario reiniciado');
+}
+
+// ── Toast ──────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
